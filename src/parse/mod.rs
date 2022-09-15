@@ -29,7 +29,6 @@ mod atom {
                 || c == '/'
                 || c == '!'
                 || c == '&'
-                || c == '&'
                 || c == '|'
         }
         let first = verify(anychar, |&c| is_valid_first(c));
@@ -96,7 +95,23 @@ mod atom {
 mod list {
     use super::value;
     use crate::{list, value::Value};
-    use nom::{bytes::complete::tag, combinator::map, sequence::delimited, IResult};
+    use nom::{
+        bytes::complete::tag,
+        combinator::map,
+        sequence::{delimited, pair, preceded},
+        IResult,
+    };
+
+    pub fn parse_list_with_end(input: &str) -> IResult<&str, Value> {
+        map(
+            delimited(
+                tag("("),
+                pair(value::parse_values, preceded(tag("."), value::parse_value)),
+                tag(")"),
+            ),
+            |(values, end)| list::from_vec_with_end(values, end),
+        )(input)
+    }
 
     pub fn parse_list(input: &str) -> IResult<&str, Value> {
         map(
@@ -130,6 +145,7 @@ mod value {
     fn parse_value_no_space(input: &str) -> IResult<&str, Value> {
         alt((
             map(atom::parse_atom, Value::Atom),
+            list::parse_list_with_end,
             list::parse_list,
             quote::parse_quote,
         ))(input)
@@ -155,6 +171,10 @@ pub fn parse(input: &str) -> Result<Vec<Value>, ParseError> {
         .finish()
         .map_err(|_| ParseError)
         .map(|(_, output)| output)
+}
+
+pub fn parse_to_list(input: &str) -> Result<Value, ParseError> {
+    parse(input).map(crate::list::from_vec)
 }
 
 #[cfg(test)]
@@ -286,6 +306,15 @@ mod test {
         round_trip_helper(
             r#"
             '(1 2 3)
+        "#,
+        );
+    }
+
+    #[test]
+    fn round_trip_improper() {
+        round_trip_helper(
+            r#"
+            (1 2 3 . 4)
         "#,
         );
     }

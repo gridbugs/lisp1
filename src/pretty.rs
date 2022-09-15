@@ -53,6 +53,7 @@ mod pair {
                 write!(f, " ")?;
                 inner(pair, f)
             }
+            Value::Function(_) => todo!(),
         }
     }
 
@@ -72,6 +73,7 @@ mod value {
         match value {
             Value::Atom(atom) => atom::fmt_atom(atom, f),
             Value::Pair(pair) => pair::fmt_pair(pair, f),
+            Value::Function(_) => todo!(),
         }
     }
 }
@@ -82,5 +84,16 @@ use std::fmt;
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         value::fmt_value(self, f)
+    }
+}
+
+pub struct FmtMultiWithNewlines<'a>(pub &'a [Value]);
+
+impl<'a> fmt::Display for FmtMultiWithNewlines<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for v in self.0 {
+            write!(f, "{}\n", v)?;
+        }
+        Ok(())
     }
 }
